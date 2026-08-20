@@ -3,17 +3,20 @@ import numpy as np
 import gc
 import os
 from sklearn.preprocessing import LabelEncoder
+try:
+    from .project_config import EVALUATION_CSV, TEST_CSV, TRAIN_CSV, TRAIN_SAMPLE_CSV
+except ImportError:
+    from project_config import EVALUATION_CSV, TEST_CSV, TRAIN_CSV, TRAIN_SAMPLE_CSV
 
-from google.colab import drive
-drive.mount('/content/drive')
-train_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/train_df.csv')
-test_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/test_df.csv')
+train_df=pd.read_csv(TRAIN_CSV)
+test_df=pd.read_csv(TEST_CSV)
 
 # 원본 데이터프레임에서 20,000개 샘플링 (훈련 데이터)
 train_sampled_df = train_df.sample(n=20000, random_state=42)
 
 # 샘플링된 데이터 저장 (훈련 데이터)
-train_sampled_df.to_csv('/content/drive/MyDrive/신용카드고객/train_sampled_df.csv', index=False)
+TRAIN_SAMPLE_CSV.parent.mkdir(parents=True, exist_ok=True)
+train_sampled_df.to_csv(TRAIN_SAMPLE_CSV, index=False)
 
 # 뽑히지 않은 데이터 추출
 train_remaining_df = train_df[~train_df.index.isin(train_sampled_df.index)]
@@ -22,15 +25,13 @@ train_remaining_df = train_df[~train_df.index.isin(train_sampled_df.index)]
 evaluation_df = train_remaining_df.sample(n=20000, random_state=42)
 
 # 검증용 데이터 저장
-evaluation_df.to_csv('/content/drive/MyDrive/신용카드고객/evaluation_df.csv', index=False)
+evaluation_df.to_csv(EVALUATION_CSV, index=False)
 
-train_sampled_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/train_sampled_df.csv')
-evaluation_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/evaluation_df.csv')
+train_sampled_df=pd.read_csv(TRAIN_SAMPLE_CSV)
+evaluation_df=pd.read_csv(EVALUATION_CSV)
 
-from google.colab import drive
-drive.mount('/content/drive')
-train_sampled_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/train_sampled_df.csv')
-evaluation_df=pd.read_csv('/content/drive/MyDrive/신용카드고객/evaluation_df.csv')
+train_sampled_df=pd.read_csv(TRAIN_SAMPLE_CSV)
+evaluation_df=pd.read_csv(EVALUATION_CSV)
 
 print(train_sampled_df["Segment"].value_counts())
 import seaborn as sns

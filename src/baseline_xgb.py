@@ -7,12 +7,10 @@ from sklearn.preprocessing import LabelEncoder
 
 
 import os
-
-from google.colab import drive
-drive.mount('/content/drive')
-
-
-os.chdir('/content/drive/MyDrive/신용카드고객')
+try:
+    from .project_config import DATA_DIR, artifact_path
+except ImportError:
+    from project_config import DATA_DIR, artifact_path
 
 train_df1_splits = ["train", "test"]
 
@@ -37,7 +35,7 @@ for split in train_df1_splits:
 
         for month in months:
             # 파일명 형식: 2018{month}_{split}_{suffix}.parquet
-            file_path = f"./{split}/{folder}/2018{month}_{split}_{suffix}.parquet"
+            file_path = DATA_DIR / split / folder / f"2018{month}_{split}_{suffix}.parquet"
             # 변수명 형식: {var_prefix}_{split}_{month}
             variable_name = f"{var_prefix}_{split}_{month}"
             globals()[variable_name] = pd.read_parquet(file_path)
@@ -212,5 +210,5 @@ submission = test_data.groupby("ID")["pred_label"] \
 
 submission.columns = ["ID", "Segment"]
 
-submission.to_csv('base_submit.csv',index=False)
+submission.to_csv(artifact_path('base_submit.csv'),index=False)
 

@@ -1,154 +1,98 @@
-# 💳 Credit Card Customer Segment Classification: High-Dimensional Big Data Pipeline
+# Credit-Card Customer Segment Classification
 
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
-[![Scikit-Learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikit-learn&logoColor=white)](https://scikit-learn.org/)
-[![Status](https://img.shields.io/badge/Status-Completed-success.svg)]()
+[한국어](README.ko.md)
 
-## 🎯 Executive Summary
-In the hyper-competitive financial sector, understanding customer behavior through precise segmentation is the key to maximizing marketing ROI and minimizing churn. This project delivers a high-performance classification pipeline to segment **2.4 million credit card customers** using a high-dimensional dataset of **857 features**.
+> [Project details](PORTFOLIO.md)
 
-- **The Problem**: Segmenting 2.4M credit card customers with 857 features, suffering from extreme class imbalance (minority class < 0.01%) and complex missing patterns.
-- **The Solution**: Built a robust pipeline using **Dask** for big data scale, predictive ML imputation for missing data, and a **Stacking Ensemble** (CatBoost + LogReg + MLP).
-- **The Result**: Achieved **Top 25% (58th Place)** in the competition with a validation F1-score of **0.8936**.
+This repository records a competition workflow for classifying credit-card
+customers into segments from high-dimensional, incomplete tabular data. It
+compares gradient boosting, classical models, neural models, TabNet, and
+stacking ensembles.
 
-## 🛠 Tech Stack
-- **Big Data Scale**: Dask (Handling 2.4M rows efficiently)
-- **Modeling**: CatBoost, Stacking Ensemble (CatBoost + LogReg + MLP)
-- **Pre-processing**: Multi-Output Random Forest Imputation
-- **Data Processing**: Pandas, NumPy
+> Performance and ranking values below are retained from
+> `reports/실험요약.md`. Raw data, submission files, and an external leaderboard
+> export are not stored in this repository.
 
----
+## Problem and data boundary
 
-### The Business Problem
-A financial institution wants to identify customer segments (A to E) to deploy targeted marketing campaigns. Misclassification leads to wasted marketing budget or, worse, customer annoyance. The goal is to maximize the F1-score to ensure balanced precision and recall across all segments.
+The experiment summary describes approximately **240,000 rows**, **857 columns**, and a
+multiclass `Segment` target. It records substantial missingness and severe
+class imbalance. The primary scripts build features from multiple monthly
+Parquet sources, but the source files are excluded.
 
-### The Data Challenge
-- **Volume**: 2,400,000 rows × 857 columns.
-- **Sparsity**: High rate of missing values requiring domain-specific handling.
-- **Extreme Imbalance**: 
-  - Class E (Majority): ~1.9M
-  - Class B (Extreme Minority): 144
-  - *Strategy*: Oversampling minority classes (A, B) and controlled undersampling of majority classes (C, D, E) to train a balanced model.
-
----
+## Analysis flow
 
 ```mermaid
-graph TD
-    subgraph Data_Scale [1. Big Data Handling]
-        A[Raw Data <br> 2.4M Rows / 857 Features] --> B[Dask Big Data Engine <br> 분산 병렬 처리]
-    end
-
-    subgraph Preprocessing_Eng [2. Predictive Imputation & Engineering]
-        B --> C[Predictive Imputation <br> Multi-Output RF]
-        B --> D[Domain Rule-Based Filling <br> 도메인 규칙 적용]
-        C & D --> E[Advanced Sampling <br> 데이터 불균형 해소]
-    end
-
-    subgraph Modeling_Stage [3. Ensemble Strategy]
-        E --> F[Stacking Ensemble <br> 모델 결합]
-        F --> G[CatBoost]
-        F --> H[Logistic Regression]
-        F --> I[MLP]
-    end
-
-    G & H & I --> J[Final Classification <br> 고객 세그먼트 도출]
-
-    style Data_Scale fill:#f9f,stroke:#333,stroke-width:2px
-    style Preprocessing_Eng fill:#bbf,stroke:#333,stroke-width:2px
-    style Modeling_Stage fill:#bfb,stroke:#333,stroke-width:2px
+flowchart LR
+    A[Monthly source tables<br/>not included] --> B[Merge on month and ID]
+    B --> C[Missingness analysis<br/>and rule-based preprocessing]
+    C --> D[Encoding and scaling]
+    D --> E[Sampled model comparison]
+    E --> F[XGBoost, CatBoost, NN,<br/>TabNet, and stacking]
+    F --> G[Weighted F1 validation]
+    G --> H[Competition submission<br/>not included]
 ```
 
----
+## Methodology recorded in the repository
 
-Instead of applying blind automation, this project implements a **domain-driven and predictive preprocessing pipeline**:
+- **Data assembly:** `src/baseline_xgb.py` loads monthly tables, concatenates
+  months by domain, then left-merges domains on month and `ID`.
+- **Missingness work:** `src/missing_mechanism_analysis.py` calculates missing
+  rates and includes rule-based filling and a multi-output random-forest
+  imputation experiment.
+- **Feature preparation:** the report records removal of columns with at least
+  50% missingness, model-based treatment for 20–50% missingness, and an
+  unknown category treatment below 20%. It also records log transformation and
+  standardization.
+- **Model comparison:** the 20k sampled experiments compare CatBoost,
+  logistic regression, XGBoost, random forest, DNN/MLP/CNN, TabNet, and
+  stacking configurations.
 
-### 🧠 Predictive Imputation (머신러닝 기반 예측 대체)
-Key features like `혜택수혜율_R3M` (Benefit Usage Rate) had high missing rates. Instead of filling them with static zeros or means:
-- We trained a **Multi-Output RandomForest Regressor** on the non-missing data.
-- Predicted the missing values based on customer age, gender, and current usage amounts.
-- *Impact*: Preserved the variance and correlation structure of the data, leading to a more realistic feature space.
+## Retained results
 
-### 🛠️ Rule-Based Domain Logic
-- **Telecom & Residence Sync**: Validated `가입통신회사코드` and filled missing `직장시도명` using `거주시도명` based on geographical probability.
-- **Missingness as a Feature**: Created binary flags for missing patterns. The fact that a variable is missing is often a strong behavioral signal in credit data.
+| Experiment | F1 | Evaluation context |
+|---|---:|---|
+| Baseline XGBoost | 0.607 | Public score |
+| Missingness-aware XGBoost | 0.625 | Public score |
+| CatBoost | 0.8893 | 20k validation sample |
+| TabNet | 0.8285 | 20k test sample |
+| CatBoost + Logistic Regression + MLP stacking | **0.8936** | 20k validation sample |
 
----
+The summary additionally records a public score of **0.64636** (75th) and a
+private score of **0.6251** (58th; top 25%). Those values are reported as
+competition outcomes in the project artifact, but cannot be independently
+verified from this checkout.
 
-We benchmarked state-of-the-art tabular models to find the optimal balance between training speed and predictive power.
+![Validation F1 comparison across retained model experiments](images/model_f1_comparison.png)
 
-### Experiments & Results
-| Model | Strategy | F1-Score | Key Insight |
-| :--- | :--- | :---: | :--- |
-| **XGBoost** | Baseline | 0.607 | Fast but struggled with extreme imbalance. |
-| **CatBoost** | Full Feature Set | **0.8893 (Val)** | Best single model. Handled categorical features natively. |
-| **TabNet** | Deep Learning | 0.8285 | Captured complex non-linearities but slower than trees. |
-| **Stacking Ensemble** | CatBoost + LogReg + MLP | **0.8936 (Val)** | **Final Choice**. Combined the best of both worlds. |
+*Figure. The checked-in comparison chart reports validation F1 for the retained
+sampled experiments. It shows the recorded stacking score (0.8936) alongside
+the individual-model runs; it is not a rerun on the unavailable full dataset.*
 
-### 📈 Model Performance Comparison
-![Model F1 Score Comparison](images/model_f1_comparison.png)
-*Figure: Comparison of Weighted F1-Scores across different models.*
+## Repository layout
 
-### 🔍 Key Feature Importance & Domain Insight (주요 피처 중요도)
-To understand *why* customers are classified into specific segments, we analyzed the top features from the CatBoost model:
-1. **혜택수혜율_R3M (Benefit Usage Rate)**: The most critical feature. Customers with high usage rates were mostly classified into active spending segments.
-2. **총이용금액 (Total Spending Amount)**: Directly separates high-value customers from dormant ones.
-3. **가입기간 (Account Age)**: Older accounts showed more stable and predictable spending patterns.
-4. **연령 (Age)**: Correlated with specific lifestyle segments and credit tiers.
-5. **거주시도명 (Residence Region)**: Captured regional economic disparities and localized spending behaviors.
-
-*Insight*: This proves that the model is not just a black box but aligns perfectly with actual credit card marketing strategies (e.g., targeting high benefit users with premium cards).
-
----
-
-### Prerequisites
-```bash
-pip install -r requirements.txt
-```
-
-### Execution Pipeline
-1. **Data Analysis**: Run `src/missing_mechanism_analysis.py` to understand missing patterns.
-2. **Preprocessing**: Run `src/preprocess_missing_features.py` to apply the predictive imputation.
-3. **Training**: Run `src/train_eval_20k.py` to train the CatBoost and Stacking models.
-
----
-
-## ⚡ 5. Performance Benchmark & Tool Selection
-- **Why Dask for 2.4M Rows? (Engineering Trade-off)**:
-  - Technically, a dataset of 2.4M rows is processed fastest using single-node, on-memory operations via Pandas or Polars.
-  - However, Dask was integrated into this pipeline to establish a **scalability prototype** for deployment on live, high-volume transactional streaming batch pipelines (scaling to tens of millions of transactions daily).
-  - Benchmarking revealed that while single-node Dask data processing was approximately 1.4x slower than Pandas due to network and partitioning overhead, it successfully reduced the Memory Peak by **68%** under parallel chunking, guaranteeing cluster-level batch processing stability at scale.
-
----
-
-## 🏁 6. Future Work & Commercial Expansion
-- **SHAP (Explainable AI)**: Implement SHAP to explain *why* a customer is classified into a specific segment, providing actionable insights for the marketing team.
-- **Cost-Sensitive Learning**: Implement custom loss functions to penalize misclassification of the rare but high-value segments (Classes A and B).
-
----
-
-## 📁 Repository Structure
 ```text
-├── notebooks/                  # Exploratory and experimental notebooks
-│   ├── missing_mechanism_analysis.ipynb
-│   ├── tabnet_experiments.ipynb
-│   └── train_eval_20k.ipynb
-├── src/                        # Extracted Python scripts from notebooks
-│   ├── baseline_xgb.py
-│   ├── missing_mechanism_analysis.py
-│   ├── preprocess_missing_features.py
-│   ├── preprocess_overview.py
-│   ├── scaling_log_standard.py
-│   ├── tabnet_experiments.py
-│   └── train_eval_20k.py
-├── reports/                    # Experiment summaries and reports
-│   └── 실험요약.md
-└── README.md                   # Project documentation
+.
+├── src/                         # Exported Colab preprocessing/training scripts
+├── notebooks/                   # Exploratory notebooks and architecture trials
+├── reports/실험요약.md           # Retained experiment summary and scores
+├── images/model_f1_comparison.png
+└── data/                        # Placeholder only; raw sources are excluded
 ```
 
-## 👥 Contributors
-- **Junhyung L.** (Project Lead)
+## Reproducibility status
 
----
-*Refactored and polished to meet professional software engineering standards for the [Data Analyst Portfolio](https://github.com/junhyung-L/Portfolio).*
-*Note: Statistical findings and feature importances are based on the actual competition report results.*
+The baseline, missingness analysis, TabNet benchmark, and preprocessing
+utilities use `src/project_config.py` and command-line arguments instead of
+machine-specific or Colab paths. The remaining archival experiment exports are
+kept as historical references, so the project is not yet portable end-to-end.
+Before rerunning, provide the original Parquet/CSV inputs and pin package
+versions.
 
+## Documentation
+
+- [Portfolio case study](PORTFOLIO.md)
+- [Project review](docs/PROJECT_REVIEW.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [CV bullets](docs/CV_BULLETS.md)
+- [Run manifest](research/RUN_MANIFEST.md)

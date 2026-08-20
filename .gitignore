@@ -1,0 +1,8 @@
+# Private portfolio-analysis notes
+.repo-analysis/
+
+# Local data and notebook artifacts
+*.parquet
+*.csv
+.ipynb_checkpoints/
+__pycache__/
